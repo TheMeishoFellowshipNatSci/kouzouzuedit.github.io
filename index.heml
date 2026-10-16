@@ -1,1 +1,2299 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>無題 - 構造図エディター</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: "Segoe UI", "Meiryo", "Yu Gothic UI", sans-serif;
+  background: #d9e9f6;
+  color: #1b3348;
+}
+.hidden { display: none !important; }
 
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#quickbar {
+  background: linear-gradient(#f5fbff, #c8dfef);
+  border-bottom: 1px solid #82aac7;
+  padding: 2px 5px;
+  display: flex;
+  gap: 2px;
+  min-height: 30px;
+  align-items: center;
+}
+#quickbar .ribbon-button {
+  min-height: 22px;
+  padding: 2px 8px;
+}
+
+#ribbon {
+  background: #c7deef;
+  border-bottom: 1px solid #6c9ac0;
+}
+#ribbon-tabs {
+  display: flex;
+  background: linear-gradient(#eaf4fb, #bfd8eb);
+  border-bottom: 1px solid #759fbe;
+  padding-top: 2px;
+}
+.ribbon-tab {
+  min-width: 74px;
+  padding: 6px 14px;
+  margin-top: 2px;
+  color: #173a55;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+}
+.ribbon-tab:hover {
+  background: #f7fbfe;
+  border-color: #8fb3cf;
+}
+.ribbon-tab.active {
+  background: #ffffff;
+  font-weight: bold;
+  border: 1px solid #769eba;
+  border-bottom: 1px solid #ffffff;
+}
+#ribbon-pages {
+  height: 103px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: linear-gradient(#ffffff, #f7fbfe 55%, #dceaf5);
+  border-left: 1px solid #769eba;
+  border-right: 1px solid #769eba;
+  border-bottom: 1px solid #769eba;
+}
+.ribbon-page {
+  display: flex;
+  height: 100%;
+  padding: 2px 4px;
+  gap: 1px;
+}
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #b4cadb;
+  min-width: max-content;
+  padding: 0 4px;
+}
+.ribbon-row {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  align-items: stretch;
+}
+.ribbon-group-title {
+  text-align: center;
+  color: #526c81;
+  font-size: 9pt;
+  padding: 1px 8px 2px;
+}
+.ribbon-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.ribbon-button {
+  color: #173a55;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 3px 6px;
+  min-height: 24px;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.ribbon-button:hover {
+  border: 1px solid #e5a02d;
+  background: linear-gradient(#fffef5, #ffeab0 48%, #ffc85c);
+}
+.ribbon-button:active,
+.ribbon-button.checked {
+  border: 1px solid #bd7318;
+  background: #ffd273;
+}
+.ribbon-button.large {
+  min-width: 78px;
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.btn-label {
+  line-height: 1.15;
+}
+
+#canvas-container {
+  flex: 1;
+  margin: 5px;
+  background: #ffffff;
+  border: 1px solid #739cba;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+#svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #ffffff;
+  touch-action: none;
+  cursor: grab;
+}
+#svg:active { cursor: grabbing; }
+
+.edge {
+  stroke: #355b7a;
+  stroke-width: 1.55;
+}
+.edge.trace {
+  stroke-dasharray: 5 4;
+}
+.node {
+  font-family: "Yu Mincho", "MS PMincho", "MS Mincho", "Noto Serif CJK JP", "Times New Roman", serif;
+  font-size: 16px;
+  fill: #173b5d;
+  cursor: pointer;
+  user-select: none;
+}
+.node.trace {
+  fill: #153d96;
+}
+.terminal {
+  font-family: "Yu Mincho", "MS PMincho", "MS Mincho", "Noto Serif CJK JP", "Times New Roman", serif;
+  font-size: 14px;
+  fill: #16643a;
+  user-select: none;
+}
+.selection-box {
+  fill: rgba(51, 153, 255, 0.14);
+  stroke: #3399ff;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  pointer-events: none;
+}
+
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  color: #153951;
+  background: linear-gradient(#f2f9fd, #bdd8eb);
+  border-top: 1px solid #739cba;
+  min-height: 28px;
+}
+#status-message {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#zoom-label { min-width: 42px; text-align: right; }
+#zoom-slider { width: 125px; }
+
+.menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 190px;
+  background: #ffffff;
+  border: 1px solid #809db4;
+  padding: 3px;
+  box-shadow: 2px 2px 8px rgba(0,0,0,.22);
+}
+.menu-item {
+  padding: 5px 24px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.menu-item:hover {
+  background: #d8edfc;
+  border-color: #7eb4dc;
+}
+.menu-separator {
+  height: 1px;
+  background: #809db4;
+  margin: 3px 0;
+}
+
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(0,0,0,.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#modal {
+  width: min(440px, calc(100vw - 24px));
+  background: #d9e9f6;
+  border: 1px solid #789fbc;
+  border-radius: 4px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.3);
+  padding: 12px;
+}
+#modal-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+#modal-message {
+  white-space: pre-line;
+  margin-bottom: 10px;
+  line-height: 1.45;
+}
+#modal-input {
+  width: 100%;
+  background: #ffffff;
+  color: #19364c;
+  border: 1px solid #7da5c2;
+  border-radius: 2px;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+#modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.modal-button {
+  min-width: 70px;
+  border: 1px solid #789fbc;
+  border-radius: 3px;
+  padding: 5px 12px;
+  background: linear-gradient(#ffffff, #d9e9f5);
+  color: #173a55;
+  cursor: pointer;
+}
+.modal-button:hover {
+  border-color: #df9426;
+  background: linear-gradient(#fffef6, #ffd67d);
+}
+.modal-button.primary { font-weight: bold; }
+
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #7fb2d5;
+}
+#splash .panel {
+  width: 760px;
+  max-width: calc(100vw - 24px);
+  height: 430px;
+  position: relative;
+  border: 2px solid #4e86ac;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(#fafdff, #d8ebf8 42%, #7fb2d5);
+  box-shadow: 0 8px 30px rgba(0,0,0,.3);
+}
+#splash .glow {
+  position: absolute;
+  left: -90px;
+  top: 22px;
+  width: 690px;
+  height: 335px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(178,220,247,.43), rgba(44,124,181,.12));
+}
+#splash .title {
+  position: absolute;
+  left: 48px;
+  right: 48px;
+  top: 128px;
+  text-align: center;
+  font-size: 44px;
+  font-weight: 300;
+  color: #123d5c;
+  font-family: "Segoe UI Light", "Segoe UI", sans-serif;
+}
+#splash .subtitle {
+  position: absolute;
+  left: 48px;
+  right: 48px;
+  top: 213px;
+  text-align: center;
+  color: #315d79;
+  font-size: 14px;
+}
+#splash .line {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: 342px;
+  border-top: 1px solid rgba(255,255,255,.85);
+}
+#splash .copy,
+#splash .version,
+#splash .loading {
+  position: absolute;
+  left: 35px;
+  right: 35px;
+  text-align: center;
+  color: #244b64;
+}
+#splash .copy { top: 360px; font-size: 12px; }
+#splash .version { top: 389px; font-size: 11px; }
+#splash .loading { top: 408px; font-size: 12px; text-align: left; }
+
+#language-selector-wrap { margin-left: auto; display: flex; align-items: center; }
+#language-selector {
+  min-height: 22px; padding: 2px 24px 2px 7px; color: #173a55;
+  background: linear-gradient(#ffffff, #d9e9f5); border: 1px solid #789fbc;
+  border-radius: 3px; font: inherit; font-size: 12px; cursor: pointer;
+}
+#language-selector:hover, #language-selector:focus { border-color: #df9426; outline: none; }
+#language-warning { display: none; margin: -4px 0 10px; padding: 6px 8px;
+  color: #6b3d00; background: #fff4ce; border: 1px solid #d6a545;
+  border-radius: 2px; font-size: 12px; line-height: 1.4; white-space: pre-line; }
+
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="panel">
+    <div class="glow"></div>
+    <div class="title">構造図エディター</div>
+    <div class="subtitle">Syntax Tree Editing Environment</div>
+    <div class="line"></div>
+    <div class="copy">© 2025-2026 The Meisho Fellowship. All Rights Reserved.</div>
+    <div class="version">Version 1.1</div>
+    <div class="loading" id="splash-loading">  設定を読み込んでいます...</div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="quickbar"></div>
+
+  <div id="ribbon">
+    <div id="ribbon-tabs"></div>
+    <div id="ribbon-pages"></div>
+  </div>
+
+  <div id="canvas-container">
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+      <g id="content"></g>
+    </svg>
+  </div>
+
+  <div id="statusbar">
+    <span id="status-message">準備中...</span>
+    <span id="user-label"></span>
+    <span id="zoom-label">100%</span>
+    <input type="range" id="zoom-slider" min="25" max="250" value="100" />
+  </div>
+</div>
+
+<div id="context-menu" class="menu hidden"></div>
+
+<div id="modal-overlay" class="hidden">
+  <div id="modal">
+    <div id="modal-title"></div>
+    <div id="modal-message"></div>
+    <input id="modal-input" type="text" />
+    <div id="language-warning" role="alert"></div>
+    <div id="modal-buttons"></div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".jundai,.gktm,.json,application/json" hidden />
+
+<script>
+"use strict";
+
+const APP_NAME = "構造図エディター";
+const APP_VERSION = "1.1";
+const COPYRIGHT = "© 2025-2026 The Meisho Fellowship. All Rights Reserved.";
+const DOCUMENT_EXTENSION = ".jundai";
+const DOCUMENT_FORMAT = "jundai-tree-document";
+const EXPORT_SCALE = 4.0;
+const SVG_NS = "http://www.w3.org/2000/svg";
+const FONT_STACK = '"Yu Mincho","MS PMincho","MS Mincho","Noto Serif CJK JP","Times New Roman",serif';
+
+const $ = (selector) => document.querySelector(selector);
+
+const LANGUAGES = { ru: "Русский", zh: "中文", ko: "조선어", hu: "Magyar" };
+let currentLanguage = localStorage.getItem("ui_language");
+if (!Object.prototype.hasOwnProperty.call(LANGUAGES, currentLanguage)) currentLanguage = "ru";
+
+const I18N = {
+ru: {
+"構造図エディター":"Редактор синтаксических деревьев","無題":"Без имени","ユーザー":"Пользователь","未選択":"Ничего не выбрано","選択":"Выбрано","末端":"Терминал","未入力":"не задано","準備中...":"Подготовка...","設定を読み込んでいます...":"Загрузка настроек...","ユーザー名を入力してください...":"Введите имя пользователя...","準備完了。マウスホイールで拡大縮小、ドラッグでキャンバス移動。":"Готово. Масштабируйте колесом мыши и перемещайте холст перетаскиванием.",
+"新規":"Создать","新規作成":"Создать","開く":"Открыть","保存":"Сохранить","名前を付けて保存":"Сохранить как","高画質PNG保存":"Сохранить PNG высокого качества","ユーザー名変更":"Изменить имя пользователя","元に戻す":"Отменить","やり直す":"Повторить","ラベル変更":"Изменить метку","末端文字":"Терминальный текст","枝削除":"Удалить ветвь","子を全削除":"Удалить всех потомков","部分木をコピー":"Копировать поддерево","部分木を切り取り":"Вырезать поддерево","子として貼り付け":"Вставить как потомка","部分木を複製":"Дублировать поддерево","子の左右を交換":"Поменять потомков местами","全体を表示":"Показать целиком","起点 A に設定":"Задать как A","c-command 判定":"Проверить c-command","既定順：左":"Порядок: слева","既定順：右":"Порядок: справа","既定の子の並び順":"Порядок потомков по умолчанию",
+"ホーム":"Главная","挿入":"Вставка","句構造規則":"Правила структуры","理論ツール":"Теория","表示":"Вид","使い方":"Справка","ファイル":"Файл","履歴":"История","クリップボード":"Буфер обмена","編集":"Правка","設定":"Настройки","節・屈折":"Клауза и флексия","名詞":"Имя","動詞":"Глагол","前置詞":"Предлог","形容詞・副詞":"Прилагательное и наречие","空範疇・自由項目":"Пустые категории и свободные элементы","自由項目":"Свободный элемент","基本規則":"Основные правила","名詞句":"Именная группа","動詞句":"Глагольная группа","前置詞句":"Предложная группа","形容詞・副詞句":"Адъективные и наречные группы","部分木":"Поддерево","ズーム":"Масштаб","ガイド":"Руководство",
+"OK":"ОК","はい":"Да","いいえ":"Нет","キャンセル":"Отмена","破棄":"Не сохранять","確認":"Подтверждение","エラー":"Ошибка","読込エラー":"Ошибка чтения","未保存の変更":"Несохранённые изменения","変更を保存しますか？":"Сохранить изменения?","ファイル名を入力してください（ダウンロード保存になります）。":"Введите имя файла. Файл будет загружен.","新しいユーザー名:":"Новое имя пользователя:","ラベル:":"Метка:","インデックス:":"Индекс:","ノードを選択してください。":"Выберите узел.","部分木を選択してください。":"Выберите поддерево.","追加先の親ノードを選択してください。":"Выберите родительский узел.","対応していないファイル形式です。":"Неподдерживаемый формат файла.","言語":"Язык",
+"基本操作":"Основные операции","編集とメニュー":"Правка и меню","ツリーの構築":"Построение дерева","ファイルと保存":"Файлы и сохранение","その他の機能":"Другие функции","バージョン情報":"О программе"
+},
+zh: {
+"構造図エディター":"结构图编辑器","無題":"无标题","ユーザー":"用户","未選択":"未选择","選択":"选择","末端":"终端","未入力":"未输入","準備中...":"正在准备...","設定を読み込んでいます...":"正在读取设置...","ユーザー名を入力してください...":"请输入用户名...","準備完了。マウスホイールで拡大縮小、ドラッグでキャンバス移動。":"准备完成。使用鼠标滚轮缩放，拖动以移动画布。",
+"新規":"新建","新規作成":"新建","開く":"打开","保存":"保存","名前を付けて保存":"另存为","高画質PNG保存":"保存高质量PNG","ユーザー名変更":"更改用户名","元に戻す":"撤销","やり直す":"重做","ラベル変更":"更改标签","末端文字":"终端文字","枝削除":"删除分支","子を全削除":"删除所有子节点","部分木をコピー":"复制子树","部分木を切り取り":"剪切子树","子として貼り付け":"粘贴为子节点","部分木を複製":"复制子树副本","子の左右を交換":"交换子节点顺序","全体を表示":"显示全部","起点 A に設定":"设为起点A","c-command 判定":"判定c-command","既定順：左":"默认顺序：左","既定順：右":"默认顺序：右","既定の子の並び順":"默认子节点顺序",
+"ホーム":"主页","挿入":"插入","句構造規則":"短语结构规则","理論ツール":"理论工具","表示":"视图","使い方":"使用方法","ファイル":"文件","履歴":"历史","クリップボード":"剪贴板","編集":"编辑","設定":"设置","節・屈折":"小句与屈折","名詞":"名词","動詞":"动词","前置詞":"介词","形容詞・副詞":"形容词与副词","空範疇・自由項目":"空语类与自由项目","自由項目":"自由项目","基本規則":"基本规则","名詞句":"名词短语","動詞句":"动词短语","前置詞句":"介词短语","形容詞・副詞句":"形容词与副词短语","部分木":"子树","ズーム":"缩放","ガイド":"指南",
+"OK":"确定","はい":"是","いいえ":"否","キャンセル":"取消","破棄":"放弃","確認":"确认","エラー":"错误","読込エラー":"读取错误","未保存の変更":"未保存的更改","変更を保存しますか？":"是否保存更改？","ファイル名を入力してください（ダウンロード保存になります）。":"请输入文件名（将以下载方式保存）。","新しいユーザー名:":"新用户名：","ラベル:":"标签：","インデックス:":"索引：","ノードを選択してください。":"请选择节点。","部分木を選択してください。":"请选择子树。","追加先の親ノードを選択してください。":"请选择要添加到的父节点。","対応していないファイル形式です。":"不支持的文件格式。","言語":"语言",
+"基本操作":"基本操作","編集とメニュー":"编辑与菜单","ツリーの構築":"构建树","ファイルと保存":"文件与保存","その他の機能":"其他功能","バージョン情報":"版本信息"
+},
+ko: {
+"構造図エディター":"구조도편집기","無題":"제목없음","ユーザー":"리용자","未選択":"선택되지 않음","選択":"선택","末端":"말단","未入力":"입력되지 않음","準備中...":"준비중...","設定を読み込んでいます...":"설정을 불러들이고있습니다...","ユーザー名を入力してください...":"리용자이름을 입력하십시오...","準備完了。マウスホイールで拡大縮小、ドラッグでキャンバス移動。":"준비되였습니다. 마우스바퀴로 확대 및 축소하고 끌기로 작업마당을 이동하십시오.",
+"新規":"새로 작성","新規作成":"새로 작성","開く":"열기","保存":"보관","名前を付けて保存":"이름을 달아 보관","高画質PNG保存":"고화질 PNG 보관","ユーザー名変更":"리용자이름 변경","元に戻す":"되돌리기","やり直す":"다시 하기","ラベル変更":"표식 변경","末端文字":"말단문자","枝削除":"가지 삭제","子を全削除":"아들마디 전부 삭제","部分木をコピー":"부분나무 복사","部分木を切り取り":"부분나무 오려두기","子として貼り付け":"아들마디로 붙이기","部分木を複製":"부분나무 복제","子の左右を交換":"아들마디 좌우교환","全体を表示":"전체 표시","起点 A に設定":"시작점 A로 설정","c-command 判定":"c-command 판정","既定順：左":"기정순서: 왼쪽","既定順：右":"기정순서: 오른쪽","既定の子の並び順":"기정 아들마디 배렬순서",
+"ホーム":"기본","挿入":"삽입","句構造規則":"구구조규칙","理論ツール":"리론도구","表示":"보기","使い方":"사용법","ファイル":"화일","履歴":"리력","クリップボード":"림시보관부","編集":"편집","設定":"설정","節・屈折":"절과 굴절","名詞":"명사","動詞":"동사","前置詞":"전치사","形容詞・副詞":"형용사와 부사","空範疇・自由項目":"빈 범주와 자유항목","自由項目":"자유항목","基本規則":"기본규칙","名詞句":"명사구","動詞句":"동사구","前置詞句":"전치사구","形容詞・副詞句":"형용사구와 부사구","部分木":"부분나무","ズーム":"확대 및 축소","ガイド":"안내",
+"OK":"확인","はい":"예","いいえ":"아니","キャンセル":"취소","破棄":"버리기","確認":"확인","エラー":"오유","読込エラー":"읽기오유","未保存の変更":"보관되지 않은 변경","変更を保存しますか？":"변경내용을 보관하겠습니까?","ファイル名を入力してください（ダウンロード保存になります）。":"화일이름을 입력하십시오(내리적재 방식으로 보관됩니다).","新しいユーザー名:":"새 리용자이름:","ラベル:":"표식:","インデックス:":"지수:","ノードを選択してください。":"마디를 선택하십시오.","部分木を選択してください。":"부분나무를 선택하십시오.","追加先の親ノードを選択してください。":"추가할 부모마디를 선택하십시오.","対応していないファイル形式です。":"지원하지 않는 화일형식입니다.","言語":"언어",
+"基本操作":"기본조작","編集とメニュー":"편집과 차림표","ツリーの構築":"나무구조 작성","ファイルと保存":"화일과 보관","その他の機能":"기타 기능","バージョン情報":"판본정보"
+},
+hu: {
+"構造図エディター":"Szerkezetifa-szerkesztő","無題":"Névtelen","ユーザー":"Felhasználó","未選択":"Nincs kijelölés","選択":"Kijelölve","末端":"Terminális","未入力":"nincs megadva","準備中...":"Előkészítés...","設定を読み込んでいます...":"Beállítások betöltése...","ユーザー名を入力してください...":"Adja meg a felhasználónevet...","準備完了。マウスホイールで拡大縮小、ドラッグでキャンバス移動。":"Kész. Nagyítson az egérgörgővel, a vásznat húzással mozgathatja.",
+"新規":"Új","新規作成":"Új dokumentum","開く":"Megnyitás","保存":"Mentés","名前を付けて保存":"Mentés másként","高画質PNG保存":"Nagy felbontású PNG mentése","ユーザー名変更":"Felhasználónév módosítása","元に戻す":"Visszavonás","やり直す":"Újra","ラベル変更":"Címke módosítása","末端文字":"Terminális szöveg","枝削除":"Ág törlése","子を全削除":"Összes gyermek törlése","部分木をコピー":"Részfa másolása","部分木を切り取り":"Részfa kivágása","子として貼り付け":"Beillesztés gyermekként","部分木を複製":"Részfa megkettőzése","子の左右を交換":"Gyermekek felcserélése","全体を表示":"Teljes nézet","起点 A に設定":"Beállítás A kezdőpontként","c-command 判定":"c-command ellenőrzése","既定順：左":"Alapértelmezett: bal","既定順：右":"Alapértelmezett: jobb","既定の子の並び順":"Gyermekek alapértelmezett sorrendje",
+"ホーム":"Kezdőlap","挿入":"Beszúrás","句構造規則":"Frázisszerkezeti szabályok","理論ツール":"Elméleti eszközök","表示":"Nézet","使い方":"Súgó","ファイル":"Fájl","履歴":"Előzmények","クリップボード":"Vágólap","編集":"Szerkesztés","設定":"Beállítások","節・屈折":"Tagmondat és inflexió","名詞":"Főnév","動詞":"Ige","前置詞":"Elöljáró","形容詞・副詞":"Melléknév és határozószó","空範疇・自由項目":"Üres kategóriák és szabad elemek","自由項目":"Szabad elem","基本規則":"Alapszabályok","名詞句":"Főnévi csoport","動詞句":"Igei csoport","前置詞句":"Elöljárós csoport","形容詞・副詞句":"Melléknévi és határozói csoport","部分木":"Részfa","ズーム":"Nagyítás","ガイド":"Útmutató",
+"OK":"OK","はい":"Igen","いいえ":"Nem","キャンセル":"Mégse","破棄":"Elvetés","確認":"Megerősítés","エラー":"Hiba","読込エラー":"Betöltési hiba","未保存の変更":"Nem mentett módosítások","変更を保存しますか？":"Menti a módosításokat?","ファイル名を入力してください（ダウンロード保存になります）。":"Adja meg a fájlnevet. A mentés letöltéssel történik.","新しいユーザー名:":"Új felhasználónév:","ラベル:":"Címke:","インデックス:":"Index:","ノードを選択してください。":"Jelöljön ki egy csomópontot.","部分木を選択してください。":"Jelöljön ki egy részfát.","追加先の親ノードを選択してください。":"Jelölje ki a szülőcsomópontot.","対応していないファイル形式です。":"Nem támogatott fájlformátum.","言語":"Nyelv",
+"基本操作":"Alapműveletek","編集とメニュー":"Szerkesztés és menük","ツリーの構築":"Fa felépítése","ファイルと保存":"Fájlok és mentés","その他の機能":"Egyéb funkciók","バージョン情報":"Névjegy"
+}
+};
+
+const SOUTH_KOREAN_TERMS = {
+  "사용자":"리용자", "이용":"리용", "연결":"련결", "연락":"련락", "역사":"력사",
+  "여자":"녀자", "노동":"로동", "요리":"료리", "여행":"려행", "연구":"연구",
+  "파일":"화일", "목록":"목록", "콘텐츠":"내용", "메뉴":"차림표"
+};
+
+function tr(value) {
+  if (value === null || value === undefined) return value;
+  let s = String(value);
+  const dict = I18N[currentLanguage] || I18N.ru;
+  if (Object.prototype.hasOwnProperty.call(dict, s)) return dict[s];
+  const replacements = Object.entries(dict).sort((a,b) => b[0].length - a[0].length);
+  for (const [from, to] of replacements) s = s.split(from).join(to);
+  return s;
+}
+
+function koreanWarnings(value) {
+  if (currentLanguage !== "ko") return [];
+  return Object.entries(SOUTH_KOREAN_TERMS).filter(([term]) => String(value).includes(term));
+}
+
+function updateLanguageWarning() {
+  const warning = $("#language-warning");
+  const input = $("#modal-input");
+  if (!warning || !input || input.style.display === "none") return;
+  const found = koreanWarnings(input.value);
+  if (!found.length) { warning.style.display = "none"; warning.textContent = ""; return; }
+  warning.textContent = "경고: 남조선에서 쓰이는 표현이 들어있습니다.\n" +
+    found.map(([a,b]) => `${a} → ${b}`).join("\n") +
+    "\n문화어표현으로 고쳐쓰는것을 권고합니다.";
+  warning.style.display = "block";
+}
+
+function buildLanguageSelector() {
+  const wrap = document.createElement("div");
+  wrap.id = "language-selector-wrap";
+  const select = document.createElement("select");
+  select.id = "language-selector";
+  select.setAttribute("aria-label", tr("言語"));
+  select.title = tr("言語");
+  for (const [code, name] of Object.entries(LANGUAGES)) {
+    const option = document.createElement("option"); option.value = code; option.textContent = name;
+    select.appendChild(option);
+  }
+  select.value = currentLanguage;
+  select.addEventListener("change", () => {
+    currentLanguage = select.value; localStorage.setItem("ui_language", currentLanguage);
+    document.documentElement.lang = currentLanguage === "zh" ? "zh-CN" : currentLanguage;
+    buildQuickAccess(); buildRibbon(); updateUserLabel(); updateTitle(); updateHeadButton(); updateSelectionStatus();
+    $("#splash .title").textContent = tr("構造図エディター");
+  });
+  wrap.appendChild(select); return wrap;
+}
+
+
+let username = localStorage.getItem("username") || "";
+let figureNumber = parseInt(localStorage.getItem("save_number") || "1", 10);
+if (!Number.isFinite(figureNumber)) figureNumber = 1;
+
+let root = null;
+let headLeft = true;
+let selectedUid = null;
+let ccommandAUid = null;
+let clipboardSubtree = null;
+let undoStack = [];
+let redoStack = [];
+let currentFileName = null;
+let fileHandle = null;
+let modified = false;
+let parentMap = new Map();
+let nodeByUid = new Map();
+let transform = { k: 1, x: 40, y: 40 };
+
+function uuid() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, "");
+  return "id-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function deepClone(value) {
+  if (typeof structuredClone === "function") return structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
+}
+
+function createNode(label, options = {}) {
+  return {
+    uid: options.uid || uuid(),
+    label: String(label ?? "X"),
+    trace: Boolean(options.trace),
+    terminal: String(options.terminal ?? ""),
+    children: []
+  };
+}
+
+function nodeToDict(node) {
+  return {
+    uid: node.uid,
+    label: node.label,
+    trace: node.trace,
+    terminal: node.terminal,
+    children: node.children.map(nodeToDict)
+  };
+}
+
+function nodeFromDict(data) {
+  const node = createNode(data?.label ?? "X", {
+    uid: data?.uid || uuid(),
+    trace: data?.trace,
+    terminal: data?.terminal ?? ""
+  });
+  node.children = Array.isArray(data?.children) ? data.children.map(nodeFromDict) : [];
+  return node;
+}
+
+function renewUids(node) {
+  node.uid = uuid();
+  node.children.forEach(renewUids);
+}
+
+function buildDefaultTree(headLeftFlag = true) {
+  const rootNode = createNode("C''");
+  const cBar = createNode("C'");
+  const c = createNode("C");
+  const iDouble = createNode("I''");
+  const nDouble = createNode("N''");
+  const iBar = createNode("I'");
+
+  cBar.children = headLeftFlag ? [c, iDouble] : [iDouble, c];
+  iDouble.children = headLeftFlag ? [nDouble, iBar] : [iBar, nDouble];
+  rootNode.children = [cBar];
+  return rootNode;
+}
+
+function assignParentMap(rootNode) {
+  const map = new Map();
+  const stack = [rootNode];
+  while (stack.length) {
+    const node = stack.pop();
+    for (const child of node.children) {
+      map.set(child.uid, node);
+      stack.push(child);
+    }
+  }
+  return map;
+}
+
+function buildNodeByUid(rootNode) {
+  const map = new Map();
+  const stack = [rootNode];
+  while (stack.length) {
+    const node = stack.pop();
+    map.set(node.uid, node);
+    stack.push(...node.children);
+  }
+  return map;
+}
+
+function layoutTree(rootNode, hSpacing = 145, vSpacing = 110) {
+  const positions = new Map();
+  let nextX = 0;
+
+  function visit(node, depth) {
+    if (!node.children.length) {
+      const x = nextX;
+      nextX += hSpacing;
+      positions.set(node.uid, [x, depth * vSpacing]);
+      return x;
+    }
+    const xs = node.children.map((child) => visit(child, depth + 1));
+    const x = xs.reduce((a, b) => a + b, 0) / xs.length;
+    positions.set(node.uid, [x, depth * vSpacing]);
+    return x;
+  }
+
+  visit(rootNode, 0);
+  return positions;
+}
+
+function dominates(a, b, map) {
+  let current = b;
+  while (current) {
+    if (current.uid === a.uid) return true;
+    current = map.get(current.uid);
+  }
+  return false;
+}
+
+function firstBranchingNodeAbove(node, map) {
+  let current = map.get(node.uid);
+  while (current) {
+    if (current.children.length >= 2) return current;
+    current = map.get(current.uid);
+  }
+  return null;
+}
+
+function cCommands(a, b, map) {
+  if (a.uid === b.uid) return false;
+  if (dominates(a, b, map) || dominates(b, a, map)) return false;
+  const branching = firstBranchingNodeAbove(a, map);
+  return branching !== null && dominates(branching, b, map);
+}
+
+function sanitizeFilename(value) {
+  value = String(value || "").trim().replace(/[\\/:*?"<>|]/g, "_");
+  return value || "ユーザー";
+}
+
+function baseFilename() {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+  return `【構造図-${String(figureNumber).padStart(3, "0")}】${sanitizeFilename(username)}，${stamp}`;
+}
+
+function setStatus(message) {
+  $("#status-message").textContent = tr(message);
+}
+
+function updateTitle() {
+  const name = currentFileName || tr("無題");
+  const mark = modified ? "*" : "";
+  document.title = `${mark}${name} - ${tr(APP_NAME)}`;
+}
+
+function updateUserLabel() {
+  $("#user-label").textContent = `${tr("ユーザー")}: ${username}`;
+}
+
+function updateHeadButton() {
+  const text = headLeft ? "既定順：左" : "既定順：右";
+  document.querySelectorAll('[data-action="head"]').forEach((btn) => {
+    btn.classList.toggle("checked", headLeft);
+    btn.setAttribute("aria-pressed", String(headLeft));
+    const label = btn.querySelector(".btn-label");
+    if (label) label.textContent = tr(text);
+  });
+}
+
+function showModal(options) {
+  return new Promise((resolve) => {
+    const overlay = $("#modal-overlay");
+    const titleEl = $("#modal-title");
+    const messageEl = $("#modal-message");
+    const inputEl = $("#modal-input");
+    const buttonsEl = $("#modal-buttons");
+
+    let finished = false;
+    const cancelValue = options.cancelValue ?? null;
+
+    titleEl.textContent = tr(options.title || "");
+    messageEl.textContent = tr(options.message || "");
+    messageEl.style.display = options.message ? "block" : "none";
+    inputEl.style.display = options.input ? "block" : "none";
+    inputEl.value = options.inputValue || "";
+    inputEl.oninput = updateLanguageWarning;
+    setTimeout(updateLanguageWarning, 0);
+    buttonsEl.innerHTML = "";
+
+    function cleanup() {
+      document.removeEventListener("keydown", onKeydown, true);
+      overlay.removeEventListener("mousedown", onOverlayMouseDown);
+    }
+
+    function finish(value) {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      overlay.classList.add("hidden");
+      const languageWarning = $("#language-warning"); if (languageWarning) { languageWarning.style.display = "none"; languageWarning.textContent = ""; }
+      resolve({ value, text: options.input ? inputEl.value : undefined });
+    }
+
+    function onKeydown(e) {
+      if (e.isComposing) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        const primary = options.buttons.find((b) => b.primary) || options.buttons[0];
+        finish(primary.value);
+      } else if (e.key === "Escape" && cancelValue !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        finish(cancelValue);
+      }
+    }
+
+    function onOverlayMouseDown(e) {
+      if (e.target === overlay && cancelValue !== null) finish(cancelValue);
+    }
+
+    options.buttons.forEach((b) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "modal-button" + (b.primary ? " primary" : "");
+      btn.textContent = tr(b.label);
+      btn.addEventListener("click", () => finish(b.value));
+      buttonsEl.appendChild(btn);
+    });
+
+    document.addEventListener("keydown", onKeydown, true);
+    overlay.addEventListener("mousedown", onOverlayMouseDown);
+    overlay.classList.remove("hidden");
+
+    setTimeout(() => {
+      if (options.input) {
+        inputEl.focus();
+        inputEl.select();
+      } else {
+        const btn = buttonsEl.querySelector(".primary") || buttonsEl.querySelector("button");
+        btn?.focus();
+      }
+    }, 0);
+  });
+}
+
+function alertInfo(title, message) {
+  return showModal({
+    title,
+    message,
+    buttons: [{ label: "OK", value: "ok", primary: true }]
+  });
+}
+
+function confirmYesNo(title, message) {
+  return showModal({
+    title,
+    message,
+    buttons: [
+      { label: "はい", value: "yes", primary: true },
+      { label: "いいえ", value: "no" }
+    ],
+    cancelValue: "no"
+  });
+}
+
+async function requestUsernameRequired() {
+  while (true) {
+    const res = await showModal({
+      title: "初回設定（※ウェブ版は毎回設定が必要です）",
+      message: "構造図エディターへようこそ。\n保存ファイル名に使用するユーザー名を入力してください:",
+      input: true,
+      inputValue: "",
+      buttons: [{ label: "OK", value: "ok", primary: true }]
+    });
+    const text = (res.text || "").trim();
+    if (text) {
+      localStorage.setItem("username", text);
+      return text;
+    }
+    await alertInfo("ユーザー名", "1文字以上のユーザー名を入力してください。");
+  }
+}
+
+function getSelectedNode() {
+  return selectedUid ? (nodeByUid.get(selectedUid) || null) : null;
+}
+
+function applyTransform() {
+  $("#content").setAttribute(
+    "transform",
+    `translate(${transform.x},${transform.y}) scale(${transform.k})`
+  );
+}
+
+function updateZoomUI(percent) {
+  $("#zoom-label").textContent = `${percent}%`;
+  $("#zoom-slider").value = Math.max(25, Math.min(250, percent));
+}
+
+function setZoomPercent(percent) {
+  const container = $("#canvas-container");
+  const rect = container.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const wx = (cx - transform.x) / transform.k;
+  const wy = (cy - transform.y) / transform.k;
+
+  transform.k = Math.max(0.25, Math.min(2.5, percent / 100));
+  transform.x = cx - wx * transform.k;
+  transform.y = cy - wy * transform.k;
+
+  applyTransform();
+  updateZoomUI(Math.round(transform.k * 100));
+}
+
+function fitTree() {
+  const container = $("#canvas-container");
+  const content = $("#content");
+  const rect = container.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+
+  const bbox = content.getBBox();
+  if (!bbox.width && !bbox.height) return;
+
+  const pad = 45;
+  const bw = bbox.width + pad * 2;
+  const bh = bbox.height + pad * 2;
+  const k = Math.max(0.25, Math.min(2.5, Math.min(rect.width / bw, rect.height / bh)));
+
+  transform.k = k;
+  transform.x = (rect.width - bbox.width * k) / 2 - bbox.x * k;
+  transform.y = (rect.height - bbox.height * k) / 2 - bbox.y * k;
+
+  applyTransform();
+  updateZoomUI(Math.round(k * 100));
+}
+
+function updateSelectionVisual() {
+  const content = $("#content");
+  content.querySelectorAll(".selection-box").forEach((r) => r.remove());
+
+  if (!selectedUid) return;
+  const textEl = content.querySelector(`.node[data-uid="${selectedUid}"]`);
+  if (!textEl) return;
+
+  const bbox = textEl.getBBox();
+  const rect = document.createElementNS(SVG_NS, "rect");
+  rect.setAttribute("class", "selection-box");
+  rect.setAttribute("x", bbox.x - 6);
+  rect.setAttribute("y", bbox.y - 4);
+  rect.setAttribute("width", bbox.width + 12);
+  rect.setAttribute("height", bbox.height + 8);
+  content.insertBefore(rect, textEl);
+}
+
+function updateSelectionStatus() {
+  const node = getSelectedNode();
+  if (node) {
+    const suffix = !node.children.length
+      ? ` / 末端: ${node.terminal || "未入力"}`
+      : "";
+    setStatus(`選択: ${node.label}${suffix}`);
+  } else {
+    setStatus("未選択");
+  }
+}
+
+function selectUid(uid) {
+  selectedUid = uid;
+  updateSelectionVisual();
+  updateSelectionStatus();
+}
+
+function createSvgText(value, x, y, className) {
+  const text = document.createElementNS(SVG_NS, "text");
+  text.setAttribute("x", x);
+  text.setAttribute("y", y);
+  text.setAttribute("text-anchor", "middle");
+  text.setAttribute("dominant-baseline", "middle");
+  text.setAttribute("class", className);
+  text.textContent = value;
+  return text;
+}
+
+function refresh(fitView = false) {
+  parentMap = assignParentMap(root);
+  nodeByUid = buildNodeByUid(root);
+
+  if (selectedUid && !nodeByUid.has(selectedUid)) selectedUid = null;
+  if (ccommandAUid && !nodeByUid.has(ccommandAUid)) ccommandAUid = null;
+
+  const positions = layoutTree(root);
+  const content = $("#content");
+  content.innerHTML = "";
+
+  function drawEdges(node) {
+    const [px, py] = positions.get(node.uid);
+    for (const child of node.children) {
+      const [cx, cy] = positions.get(child.uid);
+      const line = document.createElementNS(SVG_NS, "line");
+      line.setAttribute("x1", px);
+      line.setAttribute("y1", py + 20);
+      line.setAttribute("x2", cx);
+      line.setAttribute("y2", cy - 20);
+      line.setAttribute("class", child.trace ? "edge trace" : "edge");
+      content.appendChild(line);
+      drawEdges(child);
+    }
+  }
+  drawEdges(root);
+
+  for (const [uid, [x, y]] of positions.entries()) {
+    const node = nodeByUid.get(uid);
+    const text = createSvgText(node.label, x, y, node.trace ? "node trace" : "node");
+    text.setAttribute("data-uid", uid);
+    content.appendChild(text);
+
+    if (!node.children.length && node.terminal) {
+      const terminalText = createSvgText(node.terminal, x, y + 32, "terminal");
+      content.appendChild(terminalText);
+    }
+  }
+
+  updateSelectionVisual();
+  updateSelectionStatus();
+
+  if (fitView) requestAnimationFrame(fitTree);
+}
+
+function snapshot() {
+  return { root: deepClone(root), headLeft };
+}
+
+function pushUndo() {
+  undoStack.push(snapshot());
+  if (undoStack.length > 100) undoStack.shift();
+  redoStack = [];
+  modified = true;
+  updateTitle();
+}
+
+function restoreState(state, message) {
+  root = state.root;
+  headLeft = state.headLeft;
+  selectedUid = null;
+  ccommandAUid = null;
+  modified = true;
+  updateHeadButton();
+  refresh();
+  updateTitle();
+  setStatus(message);
+}
+
+function undo() {
+  if (!undoStack.length) {
+    setStatus("これ以上元に戻せません");
+    return;
+  }
+  redoStack.push(snapshot());
+  restoreState(undoStack.pop(), "元に戻しました");
+}
+
+function redo() {
+  if (!redoStack.length) {
+    setStatus("これ以上やり直せません");
+    return;
+  }
+  undoStack.push(snapshot());
+  restoreState(redoStack.pop(), "やり直しました");
+}
+
+function toggleHead() {
+  headLeft = !headLeft;
+  modified = true;
+  updateTitle();
+  updateHeadButton();
+  setStatus(`既定順：${headLeft ? "左" : "右"}`);
+}
+
+function documentData() {
+  return {
+    format: DOCUMENT_FORMAT,
+    version: 1,
+    application: APP_NAME,
+    username,
+    head_left: headLeft,
+    save_number: figureNumber,
+    tree: nodeToDict(root)
+  };
+}
+
+function downloadBlob(filename, blob) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+function downloadTextFile(filename, text) {
+  downloadBlob(filename, new Blob([text], { type: "application/json" }));
+}
+
+function pickFileInput() {
+  return new Promise((resolve) => {
+    const input = $("#file-input");
+    input.value = "";
+    const handler = () => {
+      input.removeEventListener("change", handler);
+      resolve(input.files && input.files[0] ? input.files[0] : null);
+    };
+    input.addEventListener("change", handler);
+    input.click();
+  });
+}
+
+async function loadFile(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || typeof data !== "object" || !("tree" in data)) {
+      throw new Error("対応していないファイル形式です。");
+    }
+
+    root = nodeFromDict(data.tree);
+    headLeft = Boolean(data.head_left ?? true);
+
+    const num = parseInt(data.save_number ?? data.figure_number ?? figureNumber, 10);
+    if (Number.isFinite(num)) figureNumber = num;
+
+    currentFileName = file.name;
+    modified = false;
+    undoStack = [];
+    redoStack = [];
+    selectedUid = null;
+    ccommandAUid = null;
+
+    updateHeadButton();
+    refresh(true);
+    updateTitle();
+    setStatus(`開きました: ${file.name}`);
+  } catch (exc) {
+    await alertInfo("読込エラー", String(exc?.message || exc));
+  }
+}
+
+async function maybeSave() {
+  if (!modified) return true;
+
+  const res = await showModal({
+    title: "未保存の変更",
+    message: "変更を保存しますか？",
+    buttons: [
+      { label: "保存", value: "save", primary: true },
+      { label: "破棄", value: "discard" },
+      { label: "キャンセル", value: "cancel" }
+    ],
+    cancelValue: "cancel"
+  });
+
+  if (res.value === "save") return await saveDocument(false);
+  if (res.value === "discard") return true;
+  return false;
+}
+
+async function newTree() {
+  if (!(await maybeSave())) return;
+
+  root = buildDefaultTree(headLeft);
+  currentFileName = null;
+  fileHandle = null;
+  modified = false;
+  undoStack = [];
+  redoStack = [];
+  selectedUid = null;
+  ccommandAUid = null;
+
+  refresh(true);
+  updateTitle();
+  setStatus("新規作成しました");
+}
+
+async function openDocument() {
+  if (!(await maybeSave())) return;
+
+  if (window.showOpenFilePicker) {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [
+          {
+            description: "構造図ファイル",
+            accept: { "application/json": [".jundai", ".gktm", ".json"] }
+          }
+        ],
+        multiple: false
+      });
+      fileHandle = handle;
+      const file = await handle.getFile();
+      await loadFile(file);
+      return;
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+    }
+  }
+
+  const file = await pickFileInput();
+  if (file) {
+    fileHandle = null;
+    await loadFile(file);
+  }
+}
+
+async function saveDocument(as = false) {
+  const text = JSON.stringify(documentData(), null, 2);
+
+  if (!as && fileHandle && fileHandle.createWritable) {
+    try {
+      const writable = await fileHandle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      currentFileName = fileHandle.name;
+      modified = false;
+      updateTitle();
+      setStatus(`保存しました: ${currentFileName}`);
+      return true;
+    } catch (err) {
+      console.warn("fileHandle write failed", err);
+    }
+  }
+
+  const suggested = (!as && currentFileName)
+    ? currentFileName
+    : baseFilename() + DOCUMENT_EXTENSION;
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: suggested,
+        types: [
+          {
+            description: "構造図エディターファイル",
+            accept: { "application/json": [DOCUMENT_EXTENSION] }
+          }
+        ]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+
+      fileHandle = handle;
+      currentFileName = handle.name;
+      modified = false;
+      updateTitle();
+      setStatus(`保存しました: ${currentFileName}`);
+      return true;
+    } catch (err) {
+      if (err?.name === "AbortError") return false;
+    }
+  }
+
+  const res = await showModal({
+    title: "名前を付けて保存",
+    message: "ファイル名を入力してください（ダウンロード保存になります）。",
+    input: true,
+    inputValue: suggested,
+    buttons: [
+      { label: "保存", value: "ok", primary: true },
+      { label: "キャンセル", value: "cancel" }
+    ],
+    cancelValue: "cancel"
+  });
+
+  if (res.value !== "ok") return false;
+
+  let filename = sanitizeFilename((res.text || "").trim() || suggested);
+  if (!filename.toLowerCase().endsWith(DOCUMENT_EXTENSION)) filename += DOCUMENT_EXTENSION;
+
+  downloadTextFile(filename, text);
+  fileHandle = null;
+  currentFileName = filename;
+  modified = false;
+  updateTitle();
+  setStatus(`保存しました（ダウンロード）: ${filename}`);
+  return true;
+}
+
+async function changeUsername() {
+  const res = await showModal({
+    title: "ユーザー名変更",
+    message: "新しいユーザー名:",
+    input: true,
+    inputValue: username,
+    buttons: [
+      { label: "OK", value: "ok", primary: true },
+      { label: "キャンセル", value: "cancel" }
+    ],
+    cancelValue: "cancel"
+  });
+
+  if (res.value !== "ok") return;
+
+  const text = (res.text || "").trim();
+  if (!text) {
+    await alertInfo("ユーザー名", "1文字以上のユーザー名を入力してください。");
+    return;
+  }
+
+  username = text;
+  localStorage.setItem("username", username);
+  updateUserLabel();
+  updateTitle();
+  setStatus("ユーザー名を変更しました");
+}
+
+async function editLabelNode(node) {
+  const res = await showModal({
+    title: "ラベル変更",
+    message: "ラベル:",
+    input: true,
+    inputValue: node.label,
+    buttons: [
+      { label: "OK", value: "ok", primary: true },
+      { label: "キャンセル", value: "cancel" }
+    ],
+    cancelValue: "cancel"
+  });
+
+  if (res.value !== "ok") return;
+
+  const text = (res.text || "").trim();
+  if (text && text !== node.label) {
+    pushUndo();
+    node.label = text;
+    refresh();
+    setStatus("ラベルを変更しました");
+  }
+}
+
+async function editTerminalNode(node) {
+  if (node.children.length) {
+    await alertInfo("末端文字", "末端文字は葉ノードにだけ設定できます。");
+    return;
+  }
+
+  const res = await showModal({
+    title: "末端文字",
+    message: "末端文字:",
+    input: true,
+    inputValue: node.terminal,
+    buttons: [
+      { label: "OK", value: "ok", primary: true },
+      { label: "キャンセル", value: "cancel" }
+    ],
+    cancelValue: "cancel"
+  });
+
+  if (res.value !== "ok") return;
+
+  const text = (res.text || "").trim();
+  if (text !== node.terminal) {
+    pushUndo();
+    node.terminal = text;
+    refresh();
+    setStatus("末端文字を変更しました");
+  }
+}
+
+async function editNodeByUid(uid) {
+  const node = nodeByUid.get(uid);
+  if (!node) return;
+
+  if (!node.children.length) await editTerminalNode(node);
+  else await editLabelNode(node);
+}
+
+async function editLabelSelected() {
+  const node = getSelectedNode();
+  if (!node) {
+    await alertInfo("ラベル変更", "ノードを選択してください。");
+    return;
+  }
+  await editLabelNode(node);
+}
+
+async function editTerminalSelected() {
+  const node = getSelectedNode();
+  if (!node) {
+    await alertInfo("末端文字", "ノードを選択してください。");
+    return;
+  }
+  await editTerminalNode(node);
+}
+
+async function addLabelToSelected(label, trace = false) {
+  const parent = getSelectedNode();
+  if (!parent) {
+    await alertInfo("ノード未選択", "追加先の親ノードを選択してください。");
+    return;
+  }
+
+  pushUndo();
+  parent.children.push(createNode(label, { trace }));
+  refresh();
+  setStatus(`${label} を追加しました`);
+}
+
+async function addTrace() {
+  const res = await showModal({
+    title: "移動痕跡",
+    message: "インデックス:",
+    input: true,
+    inputValue: "i",
+    buttons: [
+      { label: "OK", value: "ok", primary: true },
+      { label: "キャンセル", value: "cancel" }
+    ],
+    cancelValue: "cancel"
+  });
+
+  if (res.value !== "ok") return;
+
+  const index = (res.text || "").trim() || "i";
+  await addLabelToSelected(`t_${index}`, true);
+}
+
+async function addFreeNode() {
+  const res = await showModal({
+    title: "自由項目",
+    message: "ラベル:",
+    input: true,
+    inputValue: "V'",
+    buttons: [
+      { label: "OK", value: "ok", primary: true },
+      { label: "キャンセル", value: "cancel" }
+    ],
+    cancelValue: "cancel"
+  });
+
+  if (res.value !== "ok") return;
+
+  const label = (res.text || "").trim() || "X";
+  await addLabelToSelected(label, false);
+}
+
+async function swapSelectedChildren() {
+  const node = getSelectedNode();
+  if (!node || node.children.length < 2) {
+    await alertInfo("左右交換", "子を2つ以上持つノードを選択してください。");
+    return;
+  }
+
+  pushUndo();
+  node.children.reverse();
+  refresh();
+  setStatus("子の左右を交換しました");
+}
+
+async function applySimpleRule(requiredLabel, childLabels, description) {
+  const node = getSelectedNode();
+
+  if (!node) {
+    await alertInfo("ノード未選択", `先に ${requiredLabel} を選択してください。`);
+    return;
+  }
+
+  if (node.label !== requiredLabel) {
+    await alertInfo(
+      "規則が適用できません",
+      `${description} は ${requiredLabel} に適用してください。\n選択中: ${node.label}`
+    );
+    return;
+  }
+
+  if (node.children.length) {
+    const res = await confirmYesNo("確認", `${node.label} の既存の子を置き換えますか？`);
+    if (res.value !== "yes") return;
+  }
+
+  pushUndo();
+  const children = childLabels.map((label) => createNode(label));
+  if (!headLeft) children.reverse();
+  node.children = children;
+
+  refresh();
+  setStatus(`${description} を適用しました`);
+}
+
+async function copySubtree() {
+  const node = getSelectedNode();
+  if (!node) {
+    await alertInfo("コピー", "部分木を選択してください。");
+    return;
+  }
+
+  clipboardSubtree = deepClone(node);
+  setStatus("部分木をコピーしました");
+}
+
+async function cutSubtree() {
+  const node = getSelectedNode();
+  if (!node || node.uid === root.uid) {
+    await alertInfo("切り取り", "根以外の部分木を選択してください。");
+    return;
+  }
+
+  clipboardSubtree = deepClone(node);
+  const parent = parentMap.get(node.uid);
+  if (!parent) return;
+
+  pushUndo();
+  parent.children = parent.children.filter((child) => child.uid !== node.uid);
+
+  if (selectedUid === node.uid) selectedUid = null;
+  if (ccommandAUid === node.uid) ccommandAUid = null;
+
+  refresh();
+  setStatus("部分木を切り取りました");
+}
+
+async function pasteSubtree() {
+  const parent = getSelectedNode();
+  if (!parent || !clipboardSubtree) {
+    await alertInfo("貼り付け", "貼り付け先とコピー済み部分木が必要です。");
+    return;
+  }
+
+  pushUndo();
+  const clone = deepClone(clipboardSubtree);
+  renewUids(clone);
+  parent.children.push(clone);
+
+  refresh();
+  setStatus("貼り付けました");
+}
+
+async function duplicateSubtree() {
+  const node = getSelectedNode();
+  if (!node || node.uid === root.uid) {
+    await alertInfo("複製", "根以外の部分木を選択してください。");
+    return;
+  }
+
+  const parent = parentMap.get(node.uid);
+  if (!parent) return;
+
+  pushUndo();
+  const clone = deepClone(node);
+  renewUids(clone);
+
+  const index = parent.children.findIndex((child) => child.uid === node.uid);
+  parent.children.splice(index + 1, 0, clone);
+
+  refresh();
+  setStatus("部分木を複製しました");
+}
+
+async function deleteSelectedNode(showMessages = true) {
+  const node = getSelectedNode();
+  if (!node || node.uid === root.uid) {
+    if (showMessages) await alertInfo("枝削除", "根以外のノードを選択してください。");
+    return;
+  }
+
+  const parent = parentMap.get(node.uid);
+  if (!parent) return;
+
+  pushUndo();
+  parent.children = parent.children.filter((child) => child.uid !== node.uid);
+
+  if (selectedUid === node.uid) selectedUid = null;
+  if (ccommandAUid === node.uid) ccommandAUid = null;
+
+  refresh();
+  setStatus("枝削除しました");
+}
+
+async function clearChildren() {
+  const node = getSelectedNode();
+  if (!node || !node.children.length) {
+    await alertInfo("子削除", "子を持つノードを選択してください。");
+    return;
+  }
+
+  const res = await confirmYesNo("確認", `${node.label} の子をすべて削除しますか？`);
+  if (res.value !== "yes") return;
+
+  pushUndo();
+  node.children = [];
+  refresh();
+  setStatus("子を全削除しました");
+}
+
+async function setCCommandA() {
+  const node = getSelectedNode();
+  if (!node) {
+    await alertInfo("c-command", "起点 A を選択してください。");
+    return;
+  }
+
+  ccommandAUid = node.uid;
+  setStatus(`起点 A を ${node.label} に設定しました`);
+}
+
+async function checkCCommand() {
+  const a = nodeByUid.get(ccommandAUid || "");
+  const b = getSelectedNode();
+
+  if (!a || !b) {
+    await alertInfo("c-command", "起点 A を設定し、目標 B を選択してください。");
+    return;
+  }
+
+  const message =
+    `${a.label} → ${b.label}: ${cCommands(a, b, parentMap)}\n` +
+    `${b.label} → ${a.label}: ${cCommands(b, a, parentMap)}`;
+
+  await alertInfo("c-command", message);
+}
+
+async function saveImage() {
+  const content = $("#content");
+
+  content.querySelectorAll(".selection-box").forEach((r) => r.remove());
+  const bbox = content.getBBox();
+  updateSelectionVisual();
+
+  const view = {
+    x: bbox.x - 35,
+    y: bbox.y - 35,
+    width: bbox.width + 70,
+    height: bbox.height + 70
+  };
+
+  if (view.width < 20 || view.height < 20) {
+    await alertInfo("保存", "描画領域が小さすぎます。");
+    return;
+  }
+
+  const svg = $("#svg");
+  const clone = svg.cloneNode(true);
+  clone.setAttribute("xmlns", SVG_NS);
+  clone.setAttribute("width", String(view.width));
+  clone.setAttribute("height", String(view.height));
+  clone.setAttribute("viewBox", `${view.x} ${view.y} ${view.width} ${view.height}`);
+
+  const cloneContent = clone.querySelector("#content");
+  if (cloneContent) {
+    cloneContent.removeAttribute("transform");
+    cloneContent.querySelectorAll(".selection-box").forEach((r) => r.remove());
+  }
+
+  const white = document.createElementNS(SVG_NS, "rect");
+  white.setAttribute("x", view.x);
+  white.setAttribute("y", view.y);
+  white.setAttribute("width", view.width);
+  white.setAttribute("height", view.height);
+  white.setAttribute("fill", "#ffffff");
+  clone.insertBefore(white, clone.firstChild);
+
+  clone.querySelectorAll("line.edge").forEach((line) => {
+    line.setAttribute("stroke", "#355b7a");
+    line.setAttribute("stroke-width", "1.55");
+    if (line.classList.contains("trace")) line.setAttribute("stroke-dasharray", "5,4");
+  });
+
+  clone.querySelectorAll("text.node").forEach((text) => {
+    text.setAttribute("font-family", FONT_STACK);
+    text.setAttribute("font-size", "16");
+    text.setAttribute("fill", text.classList.contains("trace") ? "#153d96" : "#173b5d");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+  });
+
+  clone.querySelectorAll("text.terminal").forEach((text) => {
+    text.setAttribute("font-family", FONT_STACK);
+    text.setAttribute("font-size", "14");
+    text.setAttribute("fill", "#16643a");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+  });
+
+  const xml = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+
+  try {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error("SVGの描画に失敗しました。"));
+      img.src = url;
+    });
+
+    const scale = EXPORT_SCALE;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(view.width * scale));
+    canvas.height = Math.max(1, Math.round(view.height * scale));
+
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("PNGの生成に失敗しました。");
+
+    const suggested = baseFilename() + ".png";
+
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: suggested,
+          types: [
+            { description: "PNG画像", accept: { "image/png": [".png"] } }
+          ]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+
+        figureNumber++;
+        localStorage.setItem("save_number", String(figureNumber));
+        setStatus(`高画質PNGを保存しました: ${handle.name}`);
+        return;
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+      }
+    }
+
+    downloadBlob(suggested, blob);
+    figureNumber++;
+    localStorage.setItem("save_number", String(figureNumber));
+    setStatus(`高画質PNGを保存しました: ${suggested}`);
+  } catch (err) {
+    await alertInfo("エラー", String(err?.message || err));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function basicRuleSpecs() {
+  return [
+    ["C'' → C'", "C''", ["C'"]],
+    ["C' → C I''", "C'", ["C", "I''"]],
+    ["C' → C", "C'", ["C"]],
+    ["I'' → N'' I'", "I''", ["N''", "I'"]],
+    ["I'' → I'", "I''", ["I'"]],
+    ["I' → I", "I'", ["I"]],
+    ["I' → I V''", "I'", ["I", "V''"]],
+    ["I' → I A''", "I'", ["I", "A''"]],
+    ["I' → Adv' I'", "I'", ["Adv'", "I'"]]
+  ];
+}
+
+function npRuleSpecs() {
+  return [
+    ["N'' → Det N'", "N''", ["Det", "N'"]],
+    ["N'' → N'", "N''", ["N'"]],
+    ["N'' → N' P''", "N''", ["N'", "P''"]],
+    ["N' → N", "N'", ["N"]],
+    ["N' → N P''", "N'", ["N", "P''"]],
+    ["N' → N C''", "N'", ["N", "C''"]],
+    ["N' → N I''", "N'", ["N", "I''"]],
+    ["N' → A' N'", "N'", ["A'", "N'"]],
+    ["N' → N' P''", "N'", ["N'", "P''"]],
+    ["N' → N' A''", "N'", ["N'", "A''"]]
+  ];
+}
+
+function vpRuleSpecs() {
+  return [
+    ["V'' → V'", "V''", ["V'"]],
+    ["V'' → V' P''", "V''", ["V'", "P''"]],
+    ["V' → V", "V'", ["V"]],
+    ["V' → V N''", "V'", ["V", "N''"]],
+    ["V' → V P''", "V'", ["V", "P''"]],
+    ["V' → V C''", "V'", ["V", "C''"]],
+    ["V' → V I''", "V'", ["V", "I''"]],
+    ["V' → V A''", "V'", ["V", "A''"]],
+    ["V' → V V''", "V'", ["V", "V''"]],
+    ["V' → Adv' V'", "V'", ["Adv'", "V'"]],
+    ["V' → V' Adv''", "V'", ["V'", "Adv''"]],
+    ["V' → V' P''", "V'", ["V'", "P''"]]
+  ];
+}
+
+function ppRuleSpecs() {
+  return [
+    ["P'' → P'", "P''", ["P'"]],
+    ["P'' → P' N''", "P''", ["P'", "N''"]],
+    ["P' → P", "P'", ["P"]],
+    ["P' → P N''", "P'", ["P", "N''"]],
+    ["P' → P C''", "P'", ["P", "C''"]],
+    ["P' → P I''", "P'", ["P", "I''"]],
+    ["P' → P P''", "P'", ["P", "P''"]],
+    ["P' → Adv' P'", "P'", ["Adv'", "P'"]],
+    ["P' → P' P''", "P'", ["P'", "P''"]]
+  ];
+}
+
+function apAdvRuleSpecs() {
+  return [
+    ["A'' → A'", "A''", ["A'"]],
+    ["A' → A", "A'", ["A"]],
+    ["A' → A P''", "A'", ["A", "P''"]],
+    ["A' → A C''", "A'", ["A", "C''"]],
+    ["A' → A I''", "A'", ["A", "I''"]],
+    ["A' → Adv' A'", "A'", ["Adv'", "A'"]],
+    ["A' → A' P''", "A'", ["A'", "P''"]],
+    ["Adv'' → Adv'", "Adv''", ["Adv'"]],
+    ["Adv' → Adv", "Adv'", ["Adv"]],
+    ["Adv' → Adv P''", "Adv'", ["Adv", "P''"]],
+    ["Adv' → Adv Adv''", "Adv'", ["Adv", "Adv''"]],
+    ["Deg'' → Deg'", "Deg''", ["Deg'"]],
+    ["Deg' → Deg", "Deg'", ["Deg"]],
+    ["Deg' → Deg A''", "Deg'", ["Deg", "A''"]]
+  ];
+}
+
+const actions = {
+  new: { label: "新規", tooltip: "新規作成", run: newTree },
+  open: { label: "開く", tooltip: "開く", run: openDocument },
+  save: { label: "保存", tooltip: "保存", run: () => saveDocument(false) },
+  saveAs: { label: "名前を付けて保存", tooltip: "名前を付けて保存", run: () => saveDocument(true) },
+  export: { label: "高画質PNG保存", tooltip: "高画質PNG保存", run: saveImage },
+  username: { label: "ユーザー名変更", tooltip: "ユーザー名変更", run: changeUsername },
+  undo: { label: "元に戻す", tooltip: "元に戻す", run: undo },
+  redo: { label: "やり直す", tooltip: "やり直す", run: redo },
+  label: { label: "ラベル変更", tooltip: "ラベル変更", run: editLabelSelected },
+  terminal: { label: "末端文字", tooltip: "末端文字", run: editTerminalSelected },
+  delete: { label: "枝削除", tooltip: "枝削除", run: () => deleteSelectedNode(true) },
+  clear: { label: "子を全削除", tooltip: "子を全削除", run: clearChildren },
+  copy: { label: "部分木をコピー", tooltip: "部分木をコピー", run: copySubtree },
+  cut: { label: "部分木を切り取り", tooltip: "部分木を切り取り", run: cutSubtree },
+  paste: { label: "子として貼り付け", tooltip: "子として貼り付け", run: pasteSubtree },
+  duplicate: { label: "部分木を複製", tooltip: "部分木を複製", run: duplicateSubtree },
+  swap: { label: "子の左右を交換", tooltip: "子の左右を交換", run: swapSelectedChildren },
+  fit: { label: "全体を表示", tooltip: "全体を表示", run: fitTree },
+  actual: { label: "100%", tooltip: "100%", run: () => setZoomPercent(100) },
+  cSetA: { label: "起点 A に設定", tooltip: "起点 A に設定", run: setCCommandA },
+  cCheck: { label: "c-command 判定", tooltip: "c-command 判定", run: checkCCommand },
+  head: { label: "既定順：左", tooltip: "既定の子の並び順", checkable: true, run: toggleHead }
+};
+
+function createActionButton(actionId, large = false) {
+  const action = actions[actionId];
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ribbon-button" + (large ? " large" : "");
+  btn.dataset.action = actionId;
+
+  const span = document.createElement("span");
+  span.className = "btn-label";
+  span.textContent = tr(action.label);
+  btn.appendChild(span);
+
+  btn.title = tr(`${action.tooltip || action.label}`);
+  btn.addEventListener("click", async () => {
+    hideContextMenu();
+    await action.run();
+  });
+
+  return btn;
+}
+
+function createCustomButton(label, onClick, large = false, tooltip = null) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ribbon-button" + (large ? " large" : "");
+
+  const span = document.createElement("span");
+  span.className = "btn-label";
+  span.textContent = tr(label);
+  btn.appendChild(span);
+
+  if (tooltip) btn.title = tr(tooltip);
+  btn.addEventListener("click", async () => {
+    hideContextMenu();
+    await onClick();
+  });
+
+  return btn;
+}
+
+function createGroup(title, build) {
+  const group = document.createElement("div");
+  group.className = "ribbon-group";
+
+  const row = document.createElement("div");
+  row.className = "ribbon-row";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "ribbon-group-title";
+  titleEl.textContent = tr(title);
+
+  if (build) build(row);
+
+  group.appendChild(row);
+  group.appendChild(titleEl);
+  return group;
+}
+
+function addColumn(row, elements) {
+  const col = document.createElement("div");
+  col.className = "ribbon-column";
+  elements.forEach((el) => col.appendChild(el));
+  row.appendChild(col);
+}
+
+function addActionColumn(row, ids) {
+  addColumn(row, ids.map((id) => createActionButton(id, false)));
+}
+
+function addLargeAction(row, id) {
+  row.appendChild(createActionButton(id, true));
+}
+
+function buildHomePage(page) {
+  page.appendChild(createGroup("ファイル", (row) => {
+    addLargeAction(row, "new");
+    addActionColumn(row, ["open", "save", "export"]);
+  }));
+
+  page.appendChild(createGroup("履歴", (row) => {
+    addActionColumn(row, ["undo", "redo"]);
+  }));
+
+  page.appendChild(createGroup("クリップボード", (row) => {
+    addLargeAction(row, "paste");
+    addActionColumn(row, ["copy", "cut", "duplicate"]);
+  }));
+
+  page.appendChild(createGroup("編集", (row) => {
+    addLargeAction(row, "label");
+    addActionColumn(row, ["terminal", "delete", "clear"]);
+  }));
+
+  page.appendChild(createGroup("設定", (row) => {
+    addActionColumn(row, ["swap", "head", "username"]);
+  }));
+}
+
+function buildInsertPage(page) {
+  const categories = [
+    ["節・屈折", ["C''", "C'", "C", "I''", "I'", "I"]],
+    ["名詞", ["N''", "N'", "N", "Det"]],
+    ["動詞", ["V''", "V'", "V"]],
+    ["前置詞", ["P''", "P'", "P"]],
+    ["形容詞・副詞", ["A''", "A'", "A", "Adv''", "Adv'", "Adv", "Deg"]]
+  ];
+
+  categories.forEach(([title, labels]) => {
+    page.appendChild(createGroup(title, (row) => {
+      const buttons = labels.map((label) =>
+        createCustomButton(label, () => addLabelToSelected(label, false), false, `${label} を子として追加`)
+      );
+      for (let i = 0; i < buttons.length; i += 3) {
+        addColumn(row, buttons.slice(i, i + 3));
+      }
+    }));
+  });
+
+  page.appendChild(createGroup("空範疇・自由項目", (row) => {
+    const col1 = ["e", "PRO", "pro"].map((label) =>
+      createCustomButton(label, () => addLabelToSelected(label, false), false, `${label} を子として追加`)
+    );
+    addColumn(row, col1);
+
+    const col2 = [
+      createCustomButton("t_i", addTrace, false, "移動痕跡を追加"),
+      createCustomButton("自由項目", addFreeNode, false, "自由項目を追加")
+    ];
+    addColumn(row, col2);
+  }));
+}
+
+function buildRulesPage(page) {
+  const groups = [
+    ["基本規則", basicRuleSpecs()],
+    ["名詞句", npRuleSpecs()],
+    ["動詞句", vpRuleSpecs()],
+    ["前置詞句", ppRuleSpecs()],
+    ["形容詞・副詞句", apAdvRuleSpecs()]
+  ];
+
+  groups.forEach(([title, specs]) => {
+    page.appendChild(createGroup(title, (row) => {
+      const buttons = specs.map((spec) =>
+        createCustomButton(spec[0], () => applySimpleRule(spec[1], spec[2], spec[0]), false, spec[0])
+      );
+      for (let i = 0; i < buttons.length; i += 3) {
+        addColumn(row, buttons.slice(i, i + 3));
+      }
+    }));
+  });
+}
+
+function buildTheoryPage(page) {
+  page.appendChild(createGroup("c-command", (row) => {
+    addLargeAction(row, "cSetA");
+    addLargeAction(row, "cCheck");
+  }));
+
+  page.appendChild(createGroup("部分木", (row) => {
+    addActionColumn(row, ["copy", "duplicate", "swap"]);
+  }));
+}
+
+function buildDisplayPage(page) {
+  page.appendChild(createGroup("ズーム", (row) => {
+    addLargeAction(row, "fit");
+    addLargeAction(row, "actual");
+  }));
+}
+
+function buildHelpPage(page) {
+  page.appendChild(createGroup("ガイド", (row) => {
+    const topics = [
+      ["基本操作", () => alertInfo("基本操作",
+        "■ キャンバスの移動\n" +
+        "  空白部分をマウスでドラッグ、または2本指でスワイプすると移動します。\n\n" +
+        "■ ズーム\n" +
+        "  マウスホイール、または画面下部のスライダーで拡大・縮小します。\n\n" +
+        "■ ノードの選択\n" +
+        "  ノード（文字）をクリックすると選択され、青い枠が表示されます。\n" +
+        "  空白部分をクリックすると選択が解除されます。")],
+      ["編集とメニュー", () => alertInfo("編集とメニュー",
+        "■ ラベルの変更\n" +
+        "  ノードをダブルクリック、または選択して「ラベル変更」ボタンを押します。\n\n" +
+        "■ 末端文字の入力\n" +
+        "  葉ノード（子を持たないノード）を選択し、「末端文字」ボタンから入力します。\n\n" +
+        "■ 右クリックメニュー\n" +
+        "  ノードを右クリックすると、編集や削除などのメニューが表示されます。")],
+      ["ツリーの構築", () => alertInfo("ツリーの構築",
+        "■ ノードの追加\n" +
+        "  親となるノードを選択した状態で、「挿入」タブのボタンを押すと子ノードが追加されます。\n\n" +
+        "■ 句構造規則の適用\n" +
+        "  「句構造規則」タブを使うと、例えば C' を選択して C' → C I'' を選ぶだけで、\n" +
+        "  決まった形の子ノードを一気に配置できます。\n\n" +
+        "■ 並び順の変更\n" +
+        "  「ホーム」タブの「子の左右を交換」で、選択したノードの子の左右を入れ替えられます。")],
+      ["ファイルと保存", () => alertInfo("ファイルと保存",
+        "■ 保存と読込\n" +
+        "  「ホーム」タブからファイルの保存・読み込みができます。\n" +
+        "  形式は .jundai (JSON) です。\n\n" +
+        "■ 画像として保存\n" +
+        "  「高画質PNG保存」ボタンを押すと、現在のツリーを画像ファイルとして保存できます。\n" +
+        "  論文やレポートへの貼付に便利です。")],
+      ["その他の機能", () => alertInfo("その他の機能",
+        "■ c-command 判定\n" +
+        "  「理論ツール」タブで行えます。起点Aを設定し、目標Bを選択して判定ボタンを押します。\n\n" +
+        "■ 部分木のコピー\n" +
+        "  複雑な部分木をコピーして、別の場所に貼り付けることができます。\n\n" +
+        "■ ユーザー名\n" +
+        "  ファイル名に自動付与されるユーザー名は「設定」グループから変更できます。")],
+      ["バージョン情報", () => alertInfo("バージョン情報",
+        `${APP_NAME}\n` +
+        `Version ${APP_VERSION}\n\n` +
+        `${COPYRIGHT}`)]
+    ];
+
+    const buttons = topics.map(([label, onClick]) =>
+      createCustomButton(label, onClick, false, `${label}の説明`)
+    );
+
+    for (let i = 0; i < buttons.length; i += 3) {
+      addColumn(row, buttons.slice(i, i + 3));
+    }
+  }));
+}
+
+function selectRibbonTab(index) {
+  const tabs = $("#ribbon-tabs");
+  const pages = $("#ribbon-pages");
+
+  Array.from(tabs.children).forEach((tab, i) => {
+    tab.classList.toggle("active", i === index);
+  });
+
+  Array.from(pages.children).forEach((page, i) => {
+    page.classList.toggle("hidden", i !== index);
+  });
+}
+
+function buildRibbon() {
+  const tabs = [
+    { title: "ホーム", builder: buildHomePage },
+    { title: "挿入", builder: buildInsertPage },
+    { title: "句構造規則", builder: buildRulesPage },
+    { title: "理論ツール", builder: buildTheoryPage },
+    { title: "表示", builder: buildDisplayPage },
+    { title: "使い方", builder: buildHelpPage }
+  ];
+
+  const tabsEl = $("#ribbon-tabs");
+  const pagesEl = $("#ribbon-pages");
+
+  tabsEl.innerHTML = "";
+  pagesEl.innerHTML = "";
+
+  tabs.forEach((tab, index) => {
+    const tabBtn = document.createElement("button");
+    tabBtn.type = "button";
+    tabBtn.className = "ribbon-tab";
+    tabBtn.textContent = tr(tab.title);
+    tabBtn.addEventListener("click", () => selectRibbonTab(index));
+
+    const pageEl = document.createElement("div");
+    pageEl.className = "ribbon-page hidden";
+    tab.builder(pageEl);
+
+    tabsEl.appendChild(tabBtn);
+    pagesEl.appendChild(pageEl);
+  });
+
+  selectRibbonTab(0);
+}
+
+function buildQuickAccess() {
+  const bar = $("#quickbar");
+  bar.innerHTML = "";
+  ["save", "undo", "redo"].forEach((id) => {
+    bar.appendChild(createActionButton(id, false));
+  });
+  bar.appendChild(buildLanguageSelector());
+}
+
+function hideContextMenu() {
+  $("#context-menu").classList.add("hidden");
+}
+
+function showMenuAt(x, y, buildItems) {
+  const menu = $("#context-menu");
+  menu.innerHTML = "";
+  buildItems(menu);
+
+  menu.style.visibility = "hidden";
+  menu.classList.remove("hidden");
+
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
+  menu.style.left = Math.max(4, Math.min(x, window.innerWidth - mw - 4)) + "px";
+  menu.style.top = Math.max(4, Math.min(y, window.innerHeight - mh - 4)) + "px";
+  menu.style.visibility = "visible";
+}
+
+function showNodeContextMenu(x, y) {
+  showMenuAt(x, y, (menu) => {
+    const items = [
+      "label",
+      "terminal",
+      "separator",
+      "copy",
+      "cut",
+      "paste",
+      "duplicate",
+      "separator",
+      "swap",
+      "delete",
+      "clear"
+    ];
+
+    items.forEach((id) => {
+      if (id === "separator") {
+        const sep = document.createElement("div");
+        sep.className = "menu-separator";
+        menu.appendChild(sep);
+        return;
+      }
+
+      const item = document.createElement("div");
+      item.className = "menu-item";
+      item.textContent = tr(actions[id].label);
+      item.addEventListener("click", async () => {
+        hideContextMenu();
+        await actions[id].run();
+      });
+      menu.appendChild(item);
+    });
+  });
+}
+
+function setupCanvasEvents() {
+  const svg = $("#svg");
+  let panState = null;
+  let panMoved = false;
+
+  svg.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 && e.button !== 1) return;
+
+    const nodeEl = e.target.closest?.(".node");
+    if (nodeEl) selectUid(nodeEl.getAttribute("data-uid"));
+
+    panState = {
+      id: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      tx: transform.x,
+      ty: transform.y,
+      startedOnNode: Boolean(nodeEl)
+    };
+    panMoved = false;
+
+    try {
+      svg.setPointerCapture(e.pointerId);
+    } catch (_) {}
+  });
+
+  svg.addEventListener("pointermove", (e) => {
+    if (!panState || e.pointerId !== panState.id) return;
+
+    const dx = e.clientX - panState.startX;
+    const dy = e.clientY - panState.startY;
+
+    if (!panMoved && Math.hypot(dx, dy) > 3) panMoved = true;
+
+    if (panMoved) {
+      transform.x = panState.tx + dx;
+      transform.y = panState.ty + dy;
+      applyTransform();
+      hideContextMenu();
+    }
+  });
+
+  svg.addEventListener("pointerup", (e) => {
+    if (!panState || e.pointerId !== panState.id) return;
+
+    if (!panMoved && !panState.startedOnNode) {
+      selectedUid = null;
+      updateSelectionVisual();
+      updateSelectionStatus();
+    }
+
+    panState = null;
+  });
+
+  svg.addEventListener("pointercancel", () => {
+    panState = null;
+  });
+
+  svg.addEventListener("dblclick", async (e) => {
+    const nodeEl = e.target.closest?.(".node");
+    if (nodeEl) {
+      e.preventDefault();
+      await editNodeByUid(nodeEl.getAttribute("data-uid"));
+    }
+  });
+
+  svg.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    const nodeEl = e.target.closest?.(".node");
+    if (nodeEl) {
+      selectUid(nodeEl.getAttribute("data-uid"));
+      showNodeContextMenu(e.clientX, e.clientY);
+    } else {
+      hideContextMenu();
+    }
+  });
+
+  svg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+
+    if (e.ctrlKey) {
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const rect = svg.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const wx = (mx - transform.x) / transform.k;
+      const wy = (my - transform.y) / transform.k;
+
+      const newK = Math.max(0.25, Math.min(2.5, transform.k * factor));
+      transform.x = mx - wx * newK;
+      transform.y = my - wy * newK;
+      transform.k = newK;
+
+      applyTransform();
+      updateZoomUI(Math.round(transform.k * 100));
+    } else {
+      transform.x -= e.deltaX;
+      transform.y -= e.deltaY;
+      applyTransform();
+    }
+  }, { passive: false });
+}
+
+function setupStatusBar() {
+  const slider = $("#zoom-slider");
+  slider.addEventListener("input", () => {
+    setZoomPercent(parseInt(slider.value, 10) || 100);
+  });
+}
+
+async function init() {
+  document.documentElement.lang = currentLanguage === "zh" ? "zh-CN" : currentLanguage;
+  $("#splash .title").textContent = tr("構造図エディター");
+  $("#splash-loading").textContent = "  " + tr("設定を読み込んでいます...");
+
+  root = buildDefaultTree(headLeft);
+
+  buildQuickAccess();
+  buildRibbon();
+  setupCanvasEvents();
+  setupStatusBar();
+
+  refresh(false);
+  updateTitle();
+  updateHeadButton();
+
+  if (!username) {
+    $("#splash-loading").textContent = "  " + tr("ユーザー名を入力してください...");
+    username = await requestUsernameRequired();
+  }
+
+  $("#splash-loading").textContent = currentLanguage === "ru" ? `  Подготовка среды пользователя ${username}...` : currentLanguage === "zh" ? `  正在准备 ${username} 的环境...` : currentLanguage === "ko" ? `  ${username}의 환경을 준비하고있습니다...` : `  ${username} környezetének előkészítése...`;
+  updateUserLabel();
+  updateTitle();
+
+  requestAnimationFrame(() => {
+    refresh(true);
+  });
+
+  setTimeout(() => {
+    $("#splash").classList.add("hidden");
+    requestAnimationFrame(fitTree);
+  }, 1400);
+
+  setStatus("準備完了。マウスホイールで拡大縮小、ドラッグでキャンバス移動。");
+}
+
+window.addEventListener("beforeunload", (e) => {
+  if (modified) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#context-menu")) hideContextMenu();
+});
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>

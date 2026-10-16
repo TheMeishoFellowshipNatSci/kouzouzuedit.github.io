@@ -438,9 +438,9 @@ const FONT_STACK = '"Yu Mincho","MS PMincho","MS Mincho","Noto Serif CJK JP","Ti
 
 const $ = (selector) => document.querySelector(selector);
 
-const LANGUAGES = { ru: "Русский", zh: "中文", ko: "조선어", hu: "Magyar" };
+const LANGUAGES = { ja: "日本語", ru: "Русский", zh: "中文", ko: "조선어", hu: "Magyar" };
 let currentLanguage = localStorage.getItem("ui_language");
-if (!Object.prototype.hasOwnProperty.call(LANGUAGES, currentLanguage)) currentLanguage = "ru";
+if (!Object.prototype.hasOwnProperty.call(LANGUAGES, currentLanguage)) currentLanguage = "ja";
 
 const I18N = {
 ru: {
@@ -482,7 +482,8 @@ const SOUTH_KOREAN_TERMS = {
 function tr(value) {
   if (value === null || value === undefined) return value;
   let s = String(value);
-  const dict = I18N[currentLanguage] || I18N.ru;
+  if (currentLanguage === "ja") return s;
+  const dict = I18N[currentLanguage] || {};
   if (Object.prototype.hasOwnProperty.call(dict, s)) return dict[s];
   const replacements = Object.entries(dict).sort((a,b) => b[0].length - a[0].length);
   for (const [from, to] of replacements) s = s.split(from).join(to);
@@ -2262,7 +2263,7 @@ async function init() {
     username = await requestUsernameRequired();
   }
 
-  $("#splash-loading").textContent = currentLanguage === "ru" ? `  Подготовка среды пользователя ${username}...` : currentLanguage === "zh" ? `  正在准备 ${username} 的环境...` : currentLanguage === "ko" ? `  ${username}의 환경을 준비하고있습니다...` : `  ${username} környezetének előkészítése...`;
+  $("#splash-loading").textContent = currentLanguage === "ja" ? `  ${username} さんの環境を準備しています...` : currentLanguage === "ru" ? `  Подготовка среды пользователя ${username}...` : currentLanguage === "zh" ? `  正在准备 ${username} 的环境...` : currentLanguage === "ko" ? `  ${username}의 환경을 준비하고있습니다...` : `  ${username} környezetének előkészítése...`;
   updateUserLabel();
   updateTitle();
 

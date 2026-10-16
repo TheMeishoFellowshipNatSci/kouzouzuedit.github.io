@@ -473,6 +473,18 @@ hu: {
 }
 };
 
+function tr(value) {
+  if (value === null || value === undefined) return value;
+  const s = String(value);
+  if (currentLanguage === "ja") return s;
+  const dict = I18N[currentLanguage] || {};
+  if (Object.prototype.hasOwnProperty.call(dict, s)) return dict[s];
+  let translated = s;
+  const replacements = Object.entries(dict).sort((a, b) => b[0].length - a[0].length);
+  for (const [from, to] of replacements) translated = translated.split(from).join(to);
+  return translated;
+}
+
 const SOUTH_KOREAN_TERMS = {
   "사용자":"리용자", "이용자":"리용자", "이용":"리용", "연결":"련결", "연락":"련락",
   "연속":"련속", "연합":"련합", "연습":"련습", "연장":"련장", "연구":"연구",
@@ -2333,6 +2345,7 @@ function setupStatusBar() {
 }
 
 async function init() {
+  const splashFailsafe = setTimeout(() => { $("#splash")?.classList.add("hidden"); }, 6000);
   document.documentElement.lang = currentLanguage === "zh" ? "zh-CN" : currentLanguage;
   $("#splash .title").textContent = tr("構造図エディター");
   $("#splash-loading").textContent = "  " + tr("設定を読み込んでいます...");
@@ -2362,6 +2375,7 @@ async function init() {
   });
 
   setTimeout(() => {
+    clearTimeout(splashFailsafe);
     $("#splash").classList.add("hidden");
     requestAnimationFrame(fitTree);
   }, 1400);

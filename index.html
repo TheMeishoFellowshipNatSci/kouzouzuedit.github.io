@@ -474,36 +474,126 @@ hu: {
 };
 
 const SOUTH_KOREAN_TERMS = {
-  "사용자":"리용자", "이용":"리용", "연결":"련결", "연락":"련락", "역사":"력사",
-  "여자":"녀자", "노동":"로동", "요리":"료리", "여행":"려행", "연구":"연구",
-  "파일":"화일", "목록":"목록", "콘텐츠":"내용", "메뉴":"차림표"
+  "사용자":"리용자", "이용자":"리용자", "이용":"리용", "연결":"련결", "연락":"련락",
+  "연속":"련속", "연합":"련합", "연습":"련습", "연장":"련장", "연구":"연구",
+  "역사":"력사", "역할":"역할", "여자":"녀자", "여행":"려행", "여권":"려권",
+  "노동":"로동", "노력":"노력", "요리":"료리", "요금":"료금", "요청":"요구",
+  "파일":"화일", "폴더":"등록부", "메뉴":"차림표", "콘텐츠":"내용", "네트워크":"망",
+  "클릭":"누르기", "드래그":"끌기", "다운로드":"내리적재", "업로드":"올리적재",
+  "서비스":"봉사", "센터":"중심", "프로젝트":"계획", "프로그램":"프로그람",
+  "컴퓨터":"콤퓨터", "리포트":"보고서", "메시지":"통보문", "에러":"오유",
+  "삭제":"삭제", "취소":"취소", "설정":"설정", "편집":"편집", "저장":"보관",
+  "왼쪽":"왼쪽", "오른쪽":"오른쪽", "위치":"자리", "목표":"목적", "결과":"결과"
 };
 
-function tr(value) {
-  if (value === null || value === undefined) return value;
-  let s = String(value);
-  if (currentLanguage === "ja") return s;
-  const dict = I18N[currentLanguage] || {};
-  if (Object.prototype.hasOwnProperty.call(dict, s)) return dict[s];
-  const replacements = Object.entries(dict).sort((a,b) => b[0].length - a[0].length);
-  for (const [from, to] of replacements) s = s.split(from).join(to);
-  return s;
+const KOREAN_REGEX_RULES = [
+  { re: /(^|[^가-힣])이용(?=[가-힣]|$)/g, label: "이용 계렬", replacement: "리용 계렬" },
+  { re: /(^|[^가-힣])연(?!구)(?=[가-힣])/g, label: "일부 연- 계렬", replacement: "문맥에 따라 련- 검토" },
+  { re: /(^|[^가-힣])역(?=사|량|대|점)/g, label: "역- 계렬", replacement: "문맥에 따라 력- 검토" },
+  { re: /(^|[^가-힣])여(?=자|행|권|관|객)/g, label: "여- 계렬", replacement: "문맥에 따라 녀-/려- 검토" },
+  { re: /(^|[^가-힣])요(?=리|금|법|소)/g, label: "요- 계렬", replacement: "문맥에 따라 료- 검토" },
+  { re: /(?:입니다|합니다|됩니다)(?:\.|!|\?|$)/g, label: "남조선식 종결형 가능성", replacement: "문화어 문맥에 맞게 -입니다/-합니다 사용 여부 검토" }
+];
+
+const CHINESE_REGIONAL_TERMS = {
+  "軟體":"软件", "硬體":"硬件", "網路":"网络", "滑鼠":"鼠标", "程式":"程序",
+  "資料夾":"文件夹", "檔案":"文件", "儲存":"保存", "列印":"打印", "下載":"下载",
+  "上傳":"上传", "記憶體":"内存", "螢幕":"屏幕", "視窗":"窗口", "伺服器":"服务器",
+  "行動電話":"手机", "智慧型手機":"智能手机", "計程車":"出租车", "自行車":"自行车",
+  "影片":"视频", "訊息":"消息", "帳號":"账号", "登入":"登录", "登出":"退出登录",
+  "設定":"设置", "使用者":"用户", "新增":"新建", "刪除":"删除", "取消":"取消",
+  "確認":"确认", "連結":"链接", "搜尋":"搜索", "品質":"质量", "支援":"支持"
+};
+
+const TRADITIONAL_CHAR_MAP = {
+  "體":"体","國":"国","語":"语","學":"学","圖":"图","編":"编","輯":"辑","設":"设",
+  "定":"定","檔":"档","案":"案","開":"开","關":"关","儲":"储","載":"载","網":"网",
+  "絡":"络","軟":"软","體":"体","資":"资","訊":"讯","顯":"显","示":"示","選":"选",
+  "擇":"择","節":"节","點":"点","葉":"叶","樹":"树","構":"构","則":"则","應":"应",
+  "為":"为","與":"与","後":"后","這":"这","個":"个","們":"们","還":"还","來":"来",
+  "時":"时","間":"间","無":"无","題":"题","錯":"错","誤":"误","讀":"读","寫":"写",
+  "動":"动","畫":"画","畫":"画","萬":"万","過":"过","連":"连","線":"线","現":"现"
+};
+
+const UNSAFE_INPUT_RULES = [
+  { re: /[\u202A-\u202E\u2066-\u2069]/g, label: "双向文字控制字符", ko: "쌍방향문자 조종부호" },
+  { re: /[\u200B-\u200F\u2060\uFEFF]/g, label: "不可见字符", ko: "보이지 않는 문자" },
+  { re: /<\/?(?:script|iframe|object|embed|style|link|meta)\b/gi, label: "危险的HTML标签形式", ko: "위험한 HTML 표식형식" },
+  { re: /(?:javascript|data|vbscript)\s*:/gi, label: "危险的URL协议形式", ko: "위험한 URL 통신규약형식" },
+  { re: /on(?:error|load|click|focus|mouseover)\s*=/gi, label: "事件处理程序形式", ko: "사건처리프로그람 형식" }
+];
+
+function uniqueFindings(items) {
+  const seen = new Set();
+  return items.filter(item => { const key = item.kind + "|" + item.match + "|" + item.replacement; if (seen.has(key)) return false; seen.add(key); return true; });
 }
 
-function koreanWarnings(value) {
+function detectUnsafeInput(value) {
+  const text = String(value || "");
+  const findings = [];
+  for (const rule of UNSAFE_INPUT_RULES) {
+    rule.re.lastIndex = 0;
+    const matches = text.match(rule.re) || [];
+    for (const match of matches) findings.push({ kind: "danger", match, replacement: currentLanguage === "ko" ? rule.ko : rule.label });
+  }
+  return findings;
+}
+
+function detectKoreanRegionalisms(value) {
   if (currentLanguage !== "ko") return [];
-  return Object.entries(SOUTH_KOREAN_TERMS).filter(([term]) => String(value).includes(term));
+  const text = String(value || "");
+  const findings = [];
+  for (const [term, replacement] of Object.entries(SOUTH_KOREAN_TERMS)) {
+    let at = text.indexOf(term);
+    while (at !== -1) { findings.push({ kind: "regional", match: term, replacement }); at = text.indexOf(term, at + term.length); }
+  }
+  for (const rule of KOREAN_REGEX_RULES) {
+    rule.re.lastIndex = 0; let m;
+    while ((m = rule.re.exec(text)) !== null) {
+      findings.push({ kind: "pattern", match: m[0].trim() || rule.label, replacement: rule.replacement });
+      if (m.index === rule.re.lastIndex) rule.re.lastIndex++;
+    }
+  }
+  if (/[ぁ-んァ-ヶ]/.test(text)) findings.push({ kind: "script", match: "일본글자", replacement: "조선글로 고쳐쓰기" });
+  if (/[\u4E00-\u9FFF]/.test(text)) findings.push({ kind: "script", match: "한자 혼입", replacement: "필요하지 않으면 조선글로 고쳐쓰기" });
+  return uniqueFindings(findings);
+}
+
+function detectChineseIssues(value) {
+  if (currentLanguage !== "zh") return [];
+  const text = String(value || "");
+  const findings = [];
+  for (const [term, replacement] of Object.entries(CHINESE_REGIONAL_TERMS)) {
+    if (text.includes(term) && term !== replacement) findings.push({ kind: "regional", match: term, replacement });
+  }
+  for (const [ch, replacement] of Object.entries(TRADITIONAL_CHAR_MAP)) {
+    if (ch !== replacement && text.includes(ch)) findings.push({ kind: "traditional", match: ch, replacement });
+  }
+  if (/[ㄅ-ㄩˊˇˋ˙]/.test(text)) findings.push({ kind: "regional", match: "注音符号", replacement: "建议使用汉语拼音或简体中文" });
+  if (/[ぁ-んァ-ヶ]/.test(text)) findings.push({ kind: "script", match: "日文假名", replacement: "请确认是否误输入" });
+  return uniqueFindings(findings);
 }
 
 function updateLanguageWarning() {
   const warning = $("#language-warning");
   const input = $("#modal-input");
   if (!warning || !input || input.style.display === "none") return;
-  const found = koreanWarnings(input.value);
-  if (!found.length) { warning.style.display = "none"; warning.textContent = ""; return; }
-  warning.textContent = "경고: 남조선에서 쓰이는 표현이 들어있습니다.\n" +
-    found.map(([a,b]) => `${a} → ${b}`).join("\n") +
-    "\n문화어표현으로 고쳐쓰는것을 권고합니다.";
+  const unsafe = detectUnsafeInput(input.value);
+  const regional = currentLanguage === "ko" ? detectKoreanRegionalisms(input.value) : detectChineseIssues(input.value);
+  const found = uniqueFindings([...unsafe, ...regional]);
+  if (!found.length) { warning.style.display = "none"; warning.textContent = ""; input.removeAttribute("aria-invalid"); return; }
+  input.setAttribute("aria-invalid", "true");
+  if (currentLanguage === "ko") {
+    warning.textContent = "경고: 문화어가 아닌 표현 또는 안전하지 않은 입력형식이 검출되였습니다.\n" +
+      found.slice(0, 20).map(x => `${x.match} → ${x.replacement}`).join("\n") +
+      (found.length > 20 ? `\n그밖에 ${found.length - 20}건` : "") + "\n입력내용을 다시 검토하십시오.";
+  } else if (currentLanguage === "zh") {
+    warning.textContent = "警告：检测到非简体中文地区用语、混用文字或不安全的输入形式。\n" +
+      found.slice(0, 20).map(x => `${x.match} → ${x.replacement}`).join("\n") +
+      (found.length > 20 ? `\n另有 ${found.length - 20} 项` : "") + "\n请检查输入内容。";
+  } else {
+    warning.textContent = found.map(x => `${x.match} → ${x.replacement}`).join("\n");
+  }
   warning.style.display = "block";
 }
 
